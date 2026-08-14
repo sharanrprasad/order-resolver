@@ -221,8 +221,6 @@ START
 
 → understand_request
 
-→ resolve_customer_and_order
-
 → investigate
 
 → retrieve_relevant_policy

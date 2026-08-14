@@ -7,9 +7,7 @@ def placeholder_node(state: SupportState) -> dict:
 
 
 understand_request = placeholder_node
-resolve_customer_and_order = placeholder_node
 investigate = placeholder_node
-retrieve_relevant_policy = placeholder_node
 determine_action = placeholder_node
 validate_action = placeholder_node
 check_approval_requirement = placeholder_node
