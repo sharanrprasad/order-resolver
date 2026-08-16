@@ -1,55 +1,68 @@
 from typing import Any
-from langchain_core.messages import SystemMessage
-from langchain_core.language_models.chat_models import BaseChatModel
 
-from order_resolver.agent.state import SupportState
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import Runnable
+
+from order_resolver.agent.state import SupportState, ProposedAction
+from order_resolver.agent.types import SupportModelNode
 
 
 def create_investigator_node(
-    model: BaseChatModel,
-    read_tools: list,
-):
-    """Create the investigator agent. This can call the ReadTools repeatedly to get the correct information."""
-    investigator_model = model.bind_tools(read_tools)
+    investigation_model: Runnable, # Bound with tools here
+    action_model: Runnable, # Structured Proposed Action bound model.
+) -> SupportModelNode:
 
     async def investigate(
         state: SupportState,
     ) -> dict[str, Any]:
 
-        intent = state["intent"]
-        order_id = state.get("order_id", "")
-
-        system_message = SystemMessage(
-            content=(
-                "You are a customer support investigator. "
-                "Investigate the customer's request using the available "
-                "read-only tools. "
-                "Do not invent customer, order, shipment, refund, or policy data. "
-                "Use tools whenever factual business data is required. "
-                "Do not attempt to perform any write actions. "
-                f"The parsed support intent is: {intent}. "
-                f"The parsed order ID is: {order_id}. "
-                "Once you have enough information to understand the request, "
-                "stop calling tools and summarize your findings."
-            )
+        response: AIMessage = await investigation_model.ainvoke(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an e-commerce customer support investigator. "
+                        "Investigate the customer's request and determine the "
+                        "appropriate action. "
+                        "Use the available read-only tools whenever you need "
+                        "customer, order, shipment, refund, or company policy information. "
+                        "Do not invent facts. "
+                        "Do not perform any write operations. "
+                        "If you need more information, call the appropriate tool. "
+                        "If you have enough information to determine the appropriate "
+                        "action, stop calling tools and summarize your conclusion."
+                    ),
+                },
+                *state["messages"],
+            ]
         )
 
-        response = await investigator_model.ainvoke(
+        # The model needs more information.
+        # The graph will route this AIMessage to ReadOnlyToolNode.
+        if response.tool_calls:
+            return {
+                "messages": [response],
+            }
+
+        # No tool call means the investigation is complete.
+        proposed_action: ProposedAction = await action_model.ainvoke(
             [
-                system_message,
+                {
+                    "role": "system",
+                    "content": (
+                        "Based only on the customer request and the investigation "
+                        "results below, determine the proposed support action. "
+                        "Do not invent facts."
+                    ),
+                },
                 *state["messages"],
+                response,
             ]
         )
 
         return {
             "messages": [response],
+            "proposed_action": proposed_action,
         }
 
     return investigate
-
-
-
-
-
-
-

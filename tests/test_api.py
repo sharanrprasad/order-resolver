@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from order_resolver.main import app
+from order_resolver.main import app, create_app
 
 client = TestClient(app)
 
@@ -20,3 +20,11 @@ def test_support_endpoint_is_scaffolded() -> None:
         },
     )
     assert response.status_code == 501
+
+
+def test_create_app_preserves_injected_dependencies() -> None:
+    dependencies = app.state.dependencies
+
+    test_app = create_app(dependencies)
+
+    assert test_app.state.dependencies is dependencies
