@@ -7,7 +7,7 @@ from order_resolver.db.session import AsyncSessionLocal
 from order_resolver.dependencies.application_dependencies import (
     ApplicationDependencies,
 )
-from order_resolver.dependencies.read_service_factory import build_read_services
+from order_resolver.dependencies.service_factory import build_services
 
 DEFAULT_POLICY_DOCUMENTS_PATH = Path(__file__).resolve().parents[3] / "docs"
 
@@ -17,9 +17,9 @@ def build_application_dependencies(
     documents_path: Path = DEFAULT_POLICY_DOCUMENTS_PATH,
 ) -> ApplicationDependencies:
     """Build the dependency graph once for use by API and agent adapters."""
-    read_services = build_read_services(session_factory, documents_path)
-    read_tools = tuple(create_read_tools(read_services))
+    services = build_services(session_factory, documents_path)
+    read_tools = tuple(create_read_tools(services))
     return ApplicationDependencies(
-        read_services=read_services,
+        services=services,
         read_tools=read_tools,
     )

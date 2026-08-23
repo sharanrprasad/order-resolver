@@ -5,7 +5,7 @@ import pytest
 
 from order_resolver.agent.tools.support import call_service
 from order_resolver.services import ResourceNotFoundError
-from order_resolver.services.read_models import CustomerDetails
+from order_resolver.services.models import CustomerDetails
 
 CUSTOMER_ID = UUID("00000000-0000-0000-0000-000000000001")
 

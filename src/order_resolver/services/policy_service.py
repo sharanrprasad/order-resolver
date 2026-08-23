@@ -1,8 +1,8 @@
 from order_resolver.repositories.policy_repository import LocalPolicyRepository
-from order_resolver.services.read_models import PolicyDetails
+from order_resolver.services.models import PolicyDetails
 
 
-class PolicyReadService:
+class PolicyService:
     def __init__(self, repository: LocalPolicyRepository) -> None:
         self._repository = repository
 

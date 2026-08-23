@@ -1,11 +1,11 @@
 from uuid import UUID
 
 from order_resolver.repositories.customer_repository import CustomerRepository
-from order_resolver.services.read_models import CustomerDetails
+from order_resolver.services.models import CustomerDetails
 from order_resolver.services.resource_not_found_error import ResourceNotFoundError
 
 
-class CustomerReadService:
+class CustomerService:
     def __init__(self, repository: CustomerRepository) -> None:
         self._repository = repository
 

@@ -1,28 +1,28 @@
 from decimal import Decimal
-from typing import Any
 
 from order_resolver.agent.state import (
+    SupportIntent,
     SupportState,
     ValidationResult,
 )
-from order_resolver.agent.types import SupportModelNode
-from order_resolver.services import ReadServices
+from order_resolver.agent.types import SupportModelNode, SupportNodeReturnType
+from order_resolver.services import ResourceNotFoundError, Services
 
 # Amounts greater than this should not be approved for refund.
-APPROVAL_THRESHOLD = Decimal("100")
-
+APPROVAL_THRESHOLD = Decimal(100)
 
 
 def create_validate_action_node(
-    services: ReadServices,
+    services: Services,
 ) -> SupportModelNode:
 
     async def validate_action(
         state: SupportState,
-    ) -> dict[str, Any]:
+    ) -> SupportNodeReturnType:
+        proposed_action = state.get("proposed_action")
+        if proposed_action is None:
+            raise RuntimeError("proposed_action is missing in validate_action node")
 
-        proposed_action = state["proposed_action"]
-        customer_id = state["customer_id"]
         order_id = state.get("order_id")
 
         if proposed_action.action == "refund":
@@ -44,6 +44,23 @@ def create_validate_action_node(
                     "requires_approval": False,
                 }
 
+            if proposed_action.amount <= 0:
+                return {
+                    "validation_result": ValidationResult(
+                        valid=False,
+                        reason="The refund amount must be greater than zero.",
+                    ),
+                    "requires_approval": False,
+                }
+
+            customer_id = state.get("customer_id")
+            if customer_id is None:
+                raise RuntimeError("customer_id is missing in validate_action node")
+
+            intent = state.get("intent")
+            if intent is None:
+                raise RuntimeError("intent is missing in validate_action node")
+
             # Not making this a tool call is intentional as tools return LLM friendly results but want the result directly here.
             refundable_amount = await services.refunds.calculate(
                 customer_id,
@@ -59,13 +76,40 @@ def create_validate_action_node(
                     "requires_approval": False,
                 }
 
+            damaged_item_claim = intent == SupportIntent.DAMAGED_ITEM
+            order = await services.orders.get(customer_id, order_id)
+            try:
+                shipment = await services.orders.get_shipment(
+                    customer_id,
+                    order_id,
+                )
+            except ResourceNotFoundError:
+                shipment = None
+
+            lost_shipment = shipment is not None and shipment.status == "lost"
+            delivered_damaged_item = damaged_item_claim and (
+                order.status == "delivered"
+                or (shipment is not None and shipment.status == "delivered")
+            )
+            if not lost_shipment and not delivered_damaged_item:
+                return {
+                    "validation_result": ValidationResult(
+                        valid=False,
+                        reason=(
+                            "Refunds are allowed only for lost shipments or delivered "
+                            "items reported damaged."
+                        ),
+                    ),
+                    "requires_approval": False,
+                }
+
             return {
                 "validation_result": ValidationResult(
                     valid=True,
                 ),
                 # Human approval action triggered.
                 "requires_approval": (
-                    proposed_action.amount > APPROVAL_THRESHOLD
+                    damaged_item_claim or proposed_action.amount > APPROVAL_THRESHOLD
                 ),
             }
 
@@ -79,16 +123,42 @@ def create_validate_action_node(
                     "requires_approval": False,
                 }
 
+            customer_id = state.get("customer_id")
+            if customer_id is None:
+                raise RuntimeError("customer_id is missing in validate_action node")
+
             order = await services.orders.get(
                 customer_id,
                 order_id,
             )
 
-            if order.status not in {"pending", "processing"}:
+            if order.status not in {"pending", "paid", "processing"}:
                 return {
                     "validation_result": ValidationResult(
                         valid=False,
                         reason="The order can no longer be cancelled.",
+                    ),
+                    "requires_approval": False,
+                }
+
+            try:
+                shipment = await services.orders.get_shipment(
+                    customer_id,
+                    order_id,
+                )
+            except ResourceNotFoundError:
+                shipment = None
+
+            if shipment is not None and shipment.status in {
+                "shipped",
+                "in_transit",
+                "delivered",
+                "lost",
+            }:
+                return {
+                    "validation_result": ValidationResult(
+                        valid=False,
+                        reason="The order cannot be cancelled after shipment.",
                     ),
                     "requires_approval": False,
                 }

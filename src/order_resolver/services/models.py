@@ -5,11 +5,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class ReadModel(BaseModel):
+class ServiceModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CustomerDetails(ReadModel):
+class CustomerDetails(ServiceModel):
     id: UUID
     name: str
     email: str
@@ -17,14 +17,14 @@ class CustomerDetails(ReadModel):
     created_at: datetime
 
 
-class OrderDetails(ReadModel):
+class OrderDetails(ServiceModel):
     id: UUID
     status: str
     total: Decimal
     created_at: datetime
 
 
-class OrderItemDetails(ReadModel):
+class OrderItemDetails(ServiceModel):
     id: UUID
     order_id: UUID
     product_name: str
@@ -32,7 +32,7 @@ class OrderItemDetails(ReadModel):
     unit_price: Decimal
 
 
-class ShipmentDetails(ReadModel):
+class ShipmentDetails(ServiceModel):
     id: UUID
     order_id: UUID
     carrier: str
@@ -42,13 +42,13 @@ class ShipmentDetails(ReadModel):
     delivered_at: datetime | None
 
 
-class PolicyDetails(ReadModel):
+class PolicyDetails(ServiceModel):
     source: str
     content: str
     score: float
 
 
-class RefundCalculation(ReadModel):
+class RefundCalculation(ServiceModel):
     order_id: UUID
     order_total: Decimal
     already_reserved: Decimal
@@ -57,3 +57,12 @@ class RefundCalculation(ReadModel):
         "This is an arithmetic estimate only; policy eligibility must be checked "
         "separately."
     )
+
+
+class RefundDetails(ServiceModel):
+    id: UUID
+    order_id: UUID
+    amount: Decimal
+    reason: str
+    status: str
+    created_at: datetime

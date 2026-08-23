@@ -1,10 +1,10 @@
-import operator
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Required
 from uuid import UUID
 
 from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
@@ -17,7 +17,7 @@ class SupportIntent(StrEnum):
     OTHER = "other"
 
 
-# This is an intermediate state. Doesn't belong to the final Support State. Only the intial request node uses this.
+# This is an intermediate state. Doesn't belong to the final Support State. Only the initial request node uses this.
 class ParsedRequest(BaseModel):
     intent: SupportIntent
     order_id: UUID | None = None
@@ -80,12 +80,13 @@ class ExecutedAction(BaseModel):
     message: str | None = None
 
 
-class SupportState(TypedDict, total=False):
-    # Messages sent to and by to the LLM.
-    # operator.add specifies that new messages are appended rather than replaced.
-    messages: Annotated[list[BaseMessage], operator.add]
+class ResolutionStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
 
-    customer_id: UUID
+
+# All fields are optional because nodes return partial state updates.
+class SupportStateBase(TypedDict, total=False):
     order_id: UUID
     intent: SupportIntent
 
@@ -103,3 +104,11 @@ class SupportState(TypedDict, total=False):
 
     executed_action: ExecutedAction
     final_response: str
+    resolution_status: ResolutionStatus
+
+
+class SupportState(SupportStateBase):
+    # Messages sent to and by to the LLM.
+    # add_messages appends new messages and safely handles message IDs/updates.
+    messages: Required[Annotated[list[BaseMessage], add_messages]]
+    customer_id: Required[UUID]

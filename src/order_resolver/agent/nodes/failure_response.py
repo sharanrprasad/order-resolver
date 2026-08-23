@@ -1,18 +1,21 @@
-from typing import Any
-
-from langchain_core.runnables import Runnable
-
-from order_resolver.agent.state import SupportState
-from order_resolver.agent.types import SupportModelNode
+from order_resolver.agent.state import ResolutionStatus, SupportState
+from order_resolver.agent.types import (
+    ResponseModel,
+    SupportModelNode,
+    SupportNodeReturnType,
+)
 
 
 def create_failed_node(
-    response_model: Runnable,
+    response_model: ResponseModel,
 ) -> SupportModelNode:
 
     async def failed(
         state: SupportState,
-    ) -> dict[str, Any]:
+    ) -> SupportNodeReturnType:
+        messages = state.get("messages")
+        if not messages:
+            raise RuntimeError("messages are missing in failure_response node")
 
         validation_result = state.get("validation_result")
         approval_status = state.get("approval_status")
@@ -30,7 +33,7 @@ def create_failed_node(
                         "an action that was not completed."
                     ),
                 },
-                *state["messages"], # Unpack all the state messages here.
+                *messages,
                 # Add the below as this is only stored in the state.
                 {
                     "role": "system",
@@ -45,7 +48,8 @@ def create_failed_node(
 
         return {
             "messages": [response],
-            "final_response": response.content,
+            "final_response": response.text,
+            "resolution_status": ResolutionStatus.FAILED,
         }
 
     return failed

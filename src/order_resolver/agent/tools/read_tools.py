@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 from langchain_core.tools import BaseTool, tool
@@ -6,36 +6,37 @@ from langgraph.prebuilt import ToolRuntime
 
 from order_resolver.agent.state import SupportState
 from order_resolver.agent.tools.support import ToolResult, call_service
-from order_resolver.services import ReadServices
+from order_resolver.services import Services
 
 
-def create_read_tools(services: ReadServices) -> list[BaseTool]:
+def create_read_tools(services: Services) -> list[BaseTool]:
     """Create the six read-only tools from an injected service collection."""
 
     @tool()
-    async def get_customer(runtime: ToolRuntime[None, SupportState]) -> ToolResult:
+    async def get_customer(runtime: ToolRuntime[None, Any]) -> ToolResult:
         """Get the current customer's details."""
-        customer_id = runtime.state["customer_id"]
+        state = cast(SupportState, runtime.state)
+        customer_id = state["customer_id"]
         return await call_service(lambda: services.customers.get(customer_id))
 
     @tool()
     async def get_order(
         order_id: UUID,
-        runtime: ToolRuntime[None, SupportState],
+        runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
         """Get an order belonging to the current customer."""
-        customer_id = runtime.state["customer_id"]
-        return await call_service(
-            lambda: services.orders.get(customer_id, order_id)
-        )
+        state = cast(SupportState, runtime.state)
+        customer_id = state["customer_id"]
+        return await call_service(lambda: services.orders.get(customer_id, order_id))
 
     @tool()
     async def get_order_items(
         order_id: UUID,
-        runtime: ToolRuntime[None, SupportState],
+        runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
         """Get line items for an order belonging to the current customer."""
-        customer_id = runtime.state["customer_id"]
+        state = cast(SupportState, runtime.state)
+        customer_id = state["customer_id"]
         return await call_service(
             lambda: services.orders.get_items(customer_id, order_id)
         )
@@ -43,10 +44,11 @@ def create_read_tools(services: ReadServices) -> list[BaseTool]:
     @tool()
     async def get_shipment(
         order_id: UUID,
-        runtime: ToolRuntime[None, SupportState],
+        runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
         """Get shipment details for an order belonging to the current customer."""
-        customer_id = runtime.state["customer_id"]
+        state = cast(SupportState, runtime.state)
+        customer_id = state["customer_id"]
         return await call_service(
             lambda: services.orders.get_shipment(customer_id, order_id)
         )
@@ -54,7 +56,7 @@ def create_read_tools(services: ReadServices) -> list[BaseTool]:
     @tool()
     async def search_company_policy(
         query: str,
-        runtime: ToolRuntime[None, SupportState],
+        runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
         """Search read-only company policies relevant to a support question."""
         # Runtime is intentionally injected for a uniform trust boundary. Company
@@ -65,10 +67,11 @@ def create_read_tools(services: ReadServices) -> list[BaseTool]:
     @tool()
     async def calculate_refund(
         order_id: UUID,
-        runtime: ToolRuntime[None, SupportState],
+        runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
         """Calculate the remaining refundable amount without changing any data."""
-        customer_id = runtime.state["customer_id"]
+        state = cast(SupportState, runtime.state)
+        customer_id = state["customer_id"]
         return await call_service(
             lambda: services.refunds.calculate(customer_id, order_id)
         )

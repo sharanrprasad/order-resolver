@@ -1,9 +1,7 @@
 # Order Resolver
 
-Learning scaffold for an AI-assisted e-commerce support service using FastAPI,
-LangGraph, PostgreSQL, and pgvector. The project currently provides boundaries
-and wiring only; business rules, LLM calls, tools, RAG, and write actions are
-intentionally left for you to implement.
+A learning project to figure out end to end development of an AI agent that processes the cancellation or refund requests of a customer.
+
 
 ## Local setup
 
@@ -25,6 +23,12 @@ Run unit tests with:
 uv run pytest
 ```
 
+Run static type checker 
+
+```bash
+uv run pyright
+```
+
 ## Layout
 
 - `src/order_resolver/agent`: typed state, placeholder nodes, and graph topology
@@ -36,3 +40,48 @@ uv run pytest
 
 The support endpoints return `501 Not Implemented` until graph execution and
 persistence are connected. `/health` is usable now.
+
+
+## LangGraph graph 
+
+```text
+START
+  ↓
+understand_request
+  ↓
+investigate  ←──────────────┐
+  │                         │
+  ├─ tool call → read_only_tools
+  │                         │
+  └─────────────────────────┘
+  │
+  └─ investigation complete
+          ↓
+    validate_action
+          │
+     ┌────┴─────────────────────┐
+     │                          │
+ invalid                  valid + approval required
+     │                          │
+failure_response          human_approval
+                                │
+                           interrupt/persist
+                                │
+                         approved or rejected
+                           /             \
+                    approved             rejected
+                       ↓                    ↓
+                 execute_action      failure_response
+
+valid + no approval
+        ↓
+execute_action
+        │
+    execution success?
+       /          \
+     yes           no
+      ↓             ↓
+success_response  failure_response
+      ↓             ↓
+     END           END
+```

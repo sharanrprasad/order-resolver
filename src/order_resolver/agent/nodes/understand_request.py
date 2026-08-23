@@ -1,32 +1,40 @@
-from typing import Any, Awaitable, Callable
-from langchain_core.runnables import Runnable
-from order_resolver.agent.state import SupportState, ParsedRequest
-from order_resolver.agent.types import SupportModelNode
+from order_resolver.agent.state import SupportState
+from order_resolver.agent.types import (
+    IntentModel,
+    SupportModelNode,
+    SupportNodeReturnType,
+)
 
 
 # Using factory function method to help with testing.
 def create_understand_request_node(
-        intent_model: Runnable,
+    intent_model: IntentModel,
 ) -> SupportModelNode:
 
     async def understand_request(
         state: SupportState,
-    ) -> dict[str, Any]:
-        user_message = state["messages"][-1]
+    ) -> SupportNodeReturnType:
+        messages = state.get("messages")
+        if not messages:
+            raise RuntimeError("messages are missing in understand_request node")
 
-        result: ParsedRequest = await intent_model.ainvoke([
-            {
-                "role": "system",
-                "content": (
-                    "Classify the customer's support request. "
-                    "Extract an order ID if one is explicitly provided. "
-                    "Do not invent an order ID."
-                ),
-            },
-            user_message,
-        ])
+        user_message = messages[-1]
 
-        updates: dict[str, Any] = {
+        result = await intent_model.ainvoke(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Classify the customer's support request. "
+                        "Extract an order ID if one is explicitly provided. "
+                        "Do not invent an order ID."
+                    ),
+                },
+                user_message,
+            ]
+        )
+
+        updates: SupportNodeReturnType = {
             "intent": result.intent,
         }
 

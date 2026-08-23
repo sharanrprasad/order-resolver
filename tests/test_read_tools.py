@@ -10,8 +10,8 @@ from langgraph.prebuilt import ToolNode
 
 from order_resolver.agent.state import SupportState
 from order_resolver.agent.tools import create_read_tools
-from order_resolver.services import ReadServices, ResourceNotFoundError
-from order_resolver.services.read_models import CustomerDetails, RefundCalculation
+from order_resolver.services import ResourceNotFoundError, Services
+from order_resolver.services.models import CustomerDetails, RefundCalculation
 
 CUSTOMER_ID = UUID("00000000-0000-0000-0000-000000000001")
 ORDER_ID = UUID("00000000-0000-0000-0000-000000000101")
@@ -68,10 +68,10 @@ class RefundServiceStub:
         )
 
 
-def make_services() -> tuple[ReadServices, CustomerServiceStub, OrderServiceStub]:
+def make_services() -> tuple[Services, CustomerServiceStub, OrderServiceStub]:
     customers = CustomerServiceStub()
     orders = OrderServiceStub()
-    services = ReadServices(
+    services = Services(
         customers=customers,  # type: ignore[arg-type]
         orders=orders,  # type: ignore[arg-type]
         policies=PolicyServiceStub(),  # type: ignore[arg-type]

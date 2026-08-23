@@ -1,22 +1,25 @@
-from typing import Any
-
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import Runnable
-
-from order_resolver.agent.state import SupportState, ProposedAction
-from order_resolver.agent.types import SupportModelNode
+from order_resolver.agent.state import SupportState
+from order_resolver.agent.types import (
+    ActionModel,
+    InvestigationModel,
+    SupportModelNode,
+    SupportNodeReturnType,
+)
 
 
 def create_investigator_node(
-    investigation_model: Runnable, # Bound with tools here
-    action_model: Runnable, # Structured Proposed Action bound model.
+    investigation_model: InvestigationModel,
+    action_model: ActionModel,
 ) -> SupportModelNode:
 
     async def investigate(
         state: SupportState,
-    ) -> dict[str, Any]:
+    ) -> SupportNodeReturnType:
+        messages = state.get("messages")
+        if not messages:
+            raise RuntimeError("messages are missing in investigate node")
 
-        response: AIMessage = await investigation_model.ainvoke(
+        response = await investigation_model.ainvoke(
             [
                 {
                     "role": "system",
@@ -33,7 +36,7 @@ def create_investigator_node(
                         "action, stop calling tools and summarize your conclusion."
                     ),
                 },
-                *state["messages"],
+                *messages,
             ]
         )
 
@@ -45,7 +48,7 @@ def create_investigator_node(
             }
 
         # No tool call means the investigation is complete.
-        proposed_action: ProposedAction = await action_model.ainvoke(
+        proposed_action = await action_model.ainvoke(
             [
                 {
                     "role": "system",
@@ -55,7 +58,7 @@ def create_investigator_node(
                         "Do not invent facts."
                     ),
                 },
-                *state["messages"],
+                *messages,
                 response,
             ]
         )

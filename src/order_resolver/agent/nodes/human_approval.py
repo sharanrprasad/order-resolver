@@ -1,23 +1,23 @@
-from typing import Any
-
 from langgraph.types import interrupt
 
 from order_resolver.agent.state import (
     ApprovalStatus,
     SupportState,
 )
-from order_resolver.agent.types import SupportModelNode
+from order_resolver.agent.types import SupportModelNode, SupportNodeReturnType
 
 
 def create_human_approval_node() -> SupportModelNode:
 
     async def human_approval(
         state: SupportState,
-    ) -> dict[str, Any]:
+    ) -> SupportNodeReturnType:
+        proposed_action = state.get("proposed_action")
+        if proposed_action is None:
+            raise RuntimeError("proposed_action is missing in human_approval node")
 
-        proposed_action = state["proposed_action"]
-
-       # When interruption is resumed this whole node is run again, so don't do any actions in this node that is not okay to run multiple times.
+        # When interruption is resumed this whole node is run again, so don't do
+        # anything here that cannot be safely repeated.
         decision = interrupt(
             {
                 "type": "approval_required",
@@ -26,14 +26,17 @@ def create_human_approval_node() -> SupportModelNode:
             }
         )
 
-        # When the graph is resumes the above function is skipped and this is what is returned.
-        approved = decision["approved"]
+        # When the graph resumes, interrupt returns the supplied decision.
+        if not isinstance(decision, dict) or "approved" not in decision:
+            raise RuntimeError("approved is missing from the human approval decision")
+
+        approved = decision.get("approved")
+        if not isinstance(approved, bool):
+            raise TypeError("approved must be a boolean in the human approval decision")
 
         return {
             "approval_status": (
-                ApprovalStatus.APPROVED
-                if approved
-                else ApprovalStatus.REJECTED
+                ApprovalStatus.APPROVED if approved else ApprovalStatus.REJECTED
             )
         }
 
