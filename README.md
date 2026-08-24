@@ -14,8 +14,10 @@ uv run python scripts/seed_database.py
 uv run uvicorn order_resolver.main:app --reload
 ```
 
-Migrations and seeding are separate on purpose. `docker compose up` starts the
-database but does not mutate its schema or insert application data.
+Application migrations and seeding are separate on purpose. `docker compose up`
+starts the database but does not mutate its schema or insert application data.
+FastAPI startup initializes LangGraph's checkpoint tables and applies
+LangGraph-managed checkpoint migrations.
 
 Run unit tests with:
 
@@ -38,8 +40,24 @@ uv run pyright
 - `scripts/seed_database.py`: small deterministic local dataset
 - `docs`: policy documents to be ingested later
 
-The support endpoints return `501 Not Implemented` until graph execution and
-persistence are connected. `/health` is usable now.
+The support endpoints return `501 Not Implemented` until graph execution is
+connected. Postgres checkpoint storage is initialized during application
+startup, and `/health` is usable now.
+
+### LangGraph checkpoints
+
+Checkpoints use `DATABASE_URL` by default. Set `CHECKPOINT_DATABASE_URL` to a
+plain Psycopg URL such as `postgresql://user:password@host:5432/database` when
+checkpoint data should use a different database.
+
+Every graph invocation, resume, and state lookup must use the same thread ID:
+
+```python
+config = {"configurable": {"thread_id": thread_id}}
+```
+
+Alembic owns the application schema. The LangGraph Postgres saver owns its
+checkpoint tables and internal checkpoint migrations.
 
 
 ## LangGraph graph 

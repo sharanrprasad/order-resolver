@@ -1,5 +1,5 @@
-from collections.abc import Awaitable, Callable
-from typing import TypeAlias, Annotated, Protocol
+from collections.abc import Awaitable
+from typing import Annotated, Protocol, TypeAlias
 from uuid import UUID
 
 from langchain_core.language_models import LanguageModelInput
@@ -13,6 +13,7 @@ from order_resolver.agent.state import (
     SupportState,
     SupportStateBase,
 )
+
 
 class SupportNodeReturnType(SupportStateBase, total=False):
     messages: Annotated[list[BaseMessage], add_messages]

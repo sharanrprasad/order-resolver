@@ -4,7 +4,6 @@ from typing import TypeAlias, cast
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -47,7 +46,8 @@ def build_support_graph(
     model: BaseChatModel,
     services: Services,
     read_tools: Sequence[BaseTool],
-    checkpointer: BaseCheckpointSaver | None = None,
+    *,
+    checkpointer: BaseCheckpointSaver,
 ) -> SupportGraph:
     """Build the support workflow from injected models and application dependencies."""
     intent_model = cast(
@@ -130,9 +130,7 @@ def build_support_graph(
     graph.add_edge(SupportNodeName.SUCCESS_RESPONSE, END)
     graph.add_edge(SupportNodeName.FAILURE_RESPONSE, END)
 
-    graph_checkpointer = InMemorySaver() if checkpointer is None else checkpointer
-
     return graph.compile(
-        checkpointer=graph_checkpointer,
+        checkpointer=checkpointer,
         name="order_resolver_support",
     )
