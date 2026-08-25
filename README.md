@@ -11,8 +11,13 @@ docker compose up -d
 uv sync --dev   # Installs dev dependencies as well. 
 uv run alembic upgrade head
 uv run python scripts/seed_database.py
+uv run python scripts/seed_policy_documents.py
 uv run uvicorn order_resolver.main:app --reload
 ```
+
+The first policy seed run uses `OPENAI_API_KEY` and `EMBEDDING_MODEL` to embed the
+Markdown files under `docs/`. Later runs skip unchanged policies, re-embed
+changed policies, and remove records for deleted files.
 
 Application migrations and seeding are separate on purpose. `docker compose up`
 starts the database but does not mutate its schema or insert application data.
@@ -37,8 +42,9 @@ uv run pyright
 - `src/order_resolver/api`: FastAPI routers
 - `src/order_resolver/db`: SQLAlchemy models and session factory
 - `migrations`: Alembic configuration and initial schema (not auto-run)
-- `scripts/seed_database.py`: small deterministic local dataset
-- `docs`: policy documents to be ingested later
+- `scripts/seed_database.py`: deterministic commerce demo data
+- `scripts/seed_policy_documents.py`: idempotent policy embedding ingestion
+- `docs`: source Markdown documents mirrored into `company_policies` by the seed script
 
 The support endpoints return `501 Not Implemented` until graph execution is
 connected. Postgres checkpoint storage is initialized during application

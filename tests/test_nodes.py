@@ -1,10 +1,10 @@
 from decimal import Decimal
-from typing import Literal
-from unittest.mock import MagicMock
+from typing import Literal, cast
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableLambda
 
 from order_resolver.agent.nodes.execute_action import create_execute_action_node
@@ -17,8 +17,10 @@ from order_resolver.agent.nodes.understand_request import (
 )
 from order_resolver.agent.nodes.validate_action import create_validate_action_node
 from order_resolver.agent.state import (
+    ExecutedAction,
     ParsedRequest,
     ProposedAction,
+    ResolutionStatus,
     SupportIntent,
     SupportState,
 )
@@ -156,3 +158,62 @@ async def test_validate_action_handles_missing_order_id(
 
     assert result["validation_result"].valid is False
     assert result["requires_approval"] is False
+
+
+@pytest.mark.asyncio
+async def test_success_response_handles_no_action_conversationally() -> None:
+    response_model = MagicMock()
+    response_model.ainvoke = AsyncMock(
+        return_value=AIMessage(content="Hey! How can I help with your order today?")
+    )
+    node = create_success_node(response_model)
+    state = cast(
+        SupportState,
+        {
+            "messages": [HumanMessage(content="What's up bro?")],
+            "executed_action": ExecutedAction(
+                action="no_action",
+                success=True,
+            ),
+        },
+    )
+
+    result = await node(state)
+
+    prompt = response_model.ainvoke.await_args.args[0]
+    assert not any(
+        isinstance(message, dict)
+        and str(message.get("content", "")).startswith("Executed action:")
+        for message in prompt
+    )
+    assert result.get("final_response") == "Hey! How can I help with your order today?"
+    assert result.get("resolution_status") == ResolutionStatus.SUCCEEDED
+
+
+@pytest.mark.asyncio
+async def test_success_response_includes_completed_action() -> None:
+    response_model = MagicMock()
+    response_model.ainvoke = AsyncMock(
+        return_value=AIMessage(content="Your refund was completed successfully.")
+    )
+    node = create_success_node(response_model)
+    state = cast(
+        SupportState,
+        {
+            "messages": [HumanMessage(content="Please refund my order")],
+            "executed_action": ExecutedAction(
+                action="refund",
+                success=True,
+                reference_id=uuid4(),
+            ),
+        },
+    )
+
+    await node(state)
+
+    prompt = response_model.ainvoke.await_args.args[0]
+    assert any(
+        isinstance(message, dict)
+        and str(message.get("content", "")).startswith("Executed action:")
+        for message in prompt
+    )

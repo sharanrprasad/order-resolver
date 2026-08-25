@@ -1,4 +1,3 @@
-from typing import cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Response, status

@@ -2,6 +2,22 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def load_environment() -> None:
+    """Load base configuration followed by the selected environment overlay."""
+    load_dotenv(PROJECT_ROOT / ".env")
+
+    app_env = os.getenv("APP_ENV", "development")
+    load_dotenv(PROJECT_ROOT / f".env.{app_env}", override=True)
+
+
+load_environment()
 
 DEFAULT_DATABASE_URL = (
     "postgresql+psycopg://order_resolver:order_resolver@localhost:5432/order_resolver"
@@ -29,7 +45,7 @@ class Settings:
     database_url: str = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
     checkpoint_database_url: str = os.getenv("CHECKPOINT_DATABASE_URL", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-5-mini")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
     def __post_init__(self) -> None:

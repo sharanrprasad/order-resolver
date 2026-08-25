@@ -1,13 +1,12 @@
 from decimal import Decimal
-from pathlib import Path
 from uuid import UUID
 
 import pytest
 from sqlalchemy.sql import Select
 
 from order_resolver.repositories import (
-    LocalPolicyRepository,
     OrderRepository,
+    PolicyRepository,
     RefundRepository,
 )
 
@@ -67,11 +66,44 @@ async def test_refund_total_query_enforces_customer_scope() -> None:
     assert_customer_and_order_are_bound(session.statements[0])
 
 
-@pytest.mark.asyncio
-async def test_policy_search_prioritizes_the_matching_policy() -> None:
-    docs_path = Path(__file__).resolve().parents[1] / "docs"
-    repository = LocalPolicyRepository(docs_path)
+class PolicyRows:
+    def all(self) -> list[tuple[str, str, float]]:
+        return [("refund-policy.md", "Refund policy", 0.91)]
 
-    matches = await repository.search("refund for a delivered order", limit=3)
+
+class PolicySession:
+    def __init__(self) -> None:
+        self.statement: Select | None = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return None
+
+    async def execute(self, statement: Select) -> PolicyRows:
+        self.statement = statement
+        return PolicyRows()
+
+
+@pytest.mark.asyncio
+async def test_policy_search_uses_pgvector_and_embedding_model_scope() -> None:
+    session = PolicySession()
+    repository = PolicyRepository(lambda: session)  # type: ignore[arg-type]
+    query_embedding = [0.1, 0.2, 0.3]
+
+    matches = await repository.search(
+        query_embedding,
+        embedding_model_name="test-embedding-model",
+        limit=3,
+    )
 
     assert matches[0].source == "refund-policy.md"
+    assert matches[0].score == pytest.approx(0.91)
+    assert session.statement is not None
+    compiled = session.statement.compile()
+    assert "<=>" in str(compiled)
+    assert "company_policies.embedding_model" in str(compiled)
+    assert "test-embedding-model" in compiled.params.values()
+    assert query_embedding in compiled.params.values()
+    assert 3 in compiled.params.values()

@@ -58,7 +58,7 @@ def create_read_tools(services: Services) -> list[BaseTool]:
         query: str,
         runtime: ToolRuntime[None, Any],
     ) -> ToolResult:
-        """Search read-only company policies relevant to a support question."""
+        """Semantically search company policy using a concise support-related query."""
         # Runtime is intentionally injected for a uniform trust boundary. Company
         # policies are not customer-specific, so no state value is used here.
         _ = runtime

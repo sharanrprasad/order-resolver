@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     CheckConstraint,
     Date,
@@ -53,6 +54,24 @@ class RefundStatus(str, enum.Enum):
     approved = "approved"
     rejected = "rejected"
     completed = "completed"
+
+
+class CompanyPolicy(Base):
+    __tablename__ = "company_policies"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid4, server_default=text("gen_random_uuid()")
+    )
+    source: Mapped[str] = mapped_column(String(255), unique=True)
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector())
+    embedding_model: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Customer(Base):

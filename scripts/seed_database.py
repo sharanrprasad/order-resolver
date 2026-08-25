@@ -1,4 +1,4 @@
-"""Insert deterministic demo records after running Alembic migrations."""
+"""Insert deterministic commerce demo records."""
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -22,7 +22,7 @@ from order_resolver.db.session import SessionLocal
 def seed() -> None:
     with SessionLocal.begin() as session:
         if session.scalar(select(Customer.id).limit(1)) is not None:
-            print("Database already contains customers; seed skipped.")
+            print("Database already contains customers; demo data seed skipped.")
             return
         now = datetime.now(UTC)
         today = now.date()
@@ -113,7 +113,7 @@ def seed() -> None:
                 status=RefundStatus.completed,
             )
         )
-    print("Seed data inserted.")
+    print("Demo data inserted.")
 
 
 if __name__ == "__main__":

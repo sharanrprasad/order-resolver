@@ -12,7 +12,7 @@ class SupportRequest(BaseModel):
         str_strip_whitespace=True,
     )
 
-    customer_id: UUID
+    customer_id: UUID # This should be read from the JWT, but I am not adding that as of now.
     message: str = Field(min_length=1, max_length=4_000)
 
 

@@ -17,7 +17,7 @@ class SupportIntent(StrEnum):
     OTHER = "other"
 
 
-# This is an intermediate state. Doesn't belong to the final Support State. Only the initial request node uses this.
+# This is a model structured output. Doesn't belong to the final Support State. Only the initial request node uses this.
 class ParsedRequest(BaseModel):
     intent: SupportIntent
     order_id: UUID | None = None
