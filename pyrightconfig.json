@@ -1,0 +1,16 @@
+{
+  "include": [
+    "src",
+    "scripts",
+     "tests"
+  ],
+  "exclude": [
+    "migrations",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "standard"
+}
