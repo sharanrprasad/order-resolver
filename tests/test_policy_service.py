@@ -2,7 +2,7 @@ import pytest
 from langchain_core.embeddings import Embeddings
 
 from order_resolver.repositories.policy_repository import PolicyMatch
-from order_resolver.services.policy_service import PolicyService
+from order_resolver.services.policy_service import DEFAULT_MIN_SCORE, PolicyService
 
 
 class EmbeddingModelStub(Embeddings):
@@ -22,15 +22,16 @@ class EmbeddingModelStub(Embeddings):
 
 class PolicyRepositoryStub:
     def __init__(self) -> None:
-        self.search_args: tuple[list[float], str, int] | None = None
+        self.search_args: tuple[list[float], str, int, float] | None = None
 
     async def search(
         self,
         query_embedding: list[float],
         embedding_model_name: str,
         limit: int,
+        min_score: float = 0.0,
     ) -> list[PolicyMatch]:
-        self.search_args = (query_embedding, embedding_model_name, limit)
+        self.search_args = (query_embedding, embedding_model_name, limit, min_score)
         return [
             PolicyMatch(
                 source="refund-policy.md",
@@ -57,9 +58,26 @@ async def test_search_embeds_the_normalized_query_and_bounds_the_limit() -> None
         [0.1, 0.2, 0.3],
         "test-embedding-model",
         5,
+        DEFAULT_MIN_SCORE,
     )
     assert results[0].source == "refund-policy.md"
     assert results[0].score == pytest.approx(0.91)
+
+
+@pytest.mark.asyncio
+async def test_search_forwards_an_explicit_min_score() -> None:
+    repository = PolicyRepositoryStub()
+    embedding_model = EmbeddingModelStub()
+    service = PolicyService(
+        repository,  # type: ignore[arg-type]
+        embedding_model,
+        "test-embedding-model",
+    )
+
+    await service.search("refund a delivered order", min_score=0.75)
+
+    assert repository.search_args is not None
+    assert repository.search_args[3] == pytest.approx(0.75)
 
 
 @pytest.mark.asyncio

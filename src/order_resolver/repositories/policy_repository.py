@@ -24,18 +24,28 @@ class PolicyRepository:
         query_embedding: list[float],
         embedding_model_name: str,
         limit: int,
+        min_score: float = 0.0,
     ) -> list[PolicyMatch]:
+        """Return the closest policies ordered by similarity.
+
+        ``min_score`` is the minimum cosine similarity (``1 - cosine_distance``,
+        in ``[-1, 1]``) a row must reach to be returned; ``0.0`` disables the
+        filter and keeps the previous behaviour.
+        """
         distance = CompanyPolicy.embedding.cosine_distance(query_embedding)
+        similarity = 1 - distance
         statement = (
             select(
                 CompanyPolicy.source,
                 CompanyPolicy.content,
-                (1 - distance).label("score"),
+                similarity.label("score"),
             )
             .where(CompanyPolicy.embedding_model == embedding_model_name)
             .order_by(distance, CompanyPolicy.source)
             .limit(limit)
         )
+        if min_score > 0.0:
+            statement = statement.where(similarity >= min_score)
 
         async with self._session_factory() as session:
             rows = (await session.execute(statement)).all()

@@ -107,3 +107,25 @@ async def test_policy_search_uses_pgvector_and_embedding_model_scope() -> None:
     assert "test-embedding-model" in compiled.params.values()
     assert query_embedding in compiled.params.values()
     assert 3 in compiled.params.values()
+    # No similarity threshold is applied by default.
+    assert ">=" not in str(compiled)
+
+
+@pytest.mark.asyncio
+async def test_policy_search_filters_by_min_score_in_sql() -> None:
+    session = PolicySession()
+    repository = PolicyRepository(lambda: session)  # type: ignore[arg-type]
+
+    await repository.search(
+        [0.1, 0.2, 0.3],
+        embedding_model_name="test-embedding-model",
+        limit=3,
+        min_score=0.4,
+    )
+
+    assert session.statement is not None
+    compiled = session.statement.compile()
+    # The similarity floor (1 - cosine_distance >= :min_score) is enforced in the
+    # query, not just by ordering.
+    assert ">=" in str(compiled)
+    assert 0.4 in compiled.params.values()
