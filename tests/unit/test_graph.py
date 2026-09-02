@@ -6,6 +6,7 @@ import pytest
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START
 
 from order_resolver.agent.graph import build_support_graph
@@ -52,6 +53,7 @@ def test_support_graph_registers_expected_nodes_and_edges() -> None:
         cast(BaseChatModel, model),
         cast(Services, object()),
         [],
+        checkpointer=InMemorySaver(),
     )
 
     assert set(graph.nodes) == {START, *SupportNodeName}

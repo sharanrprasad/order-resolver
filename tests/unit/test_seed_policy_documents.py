@@ -9,7 +9,7 @@ import pytest
 from langchain_core.embeddings import Embeddings
 
 SEED_SCRIPT = run_path(
-    str(Path(__file__).resolve().parents[1] / "scripts" / "seed_policy_documents.py"),
+    str(Path(__file__).resolve().parents[2] / "scripts" / "seed_policy_documents.py"),
     run_name="seed_policy_documents",
 )
 policy_document_id = cast(

@@ -24,11 +24,25 @@ starts the database but does not mutate its schema or insert application data.
 FastAPI startup initializes LangGraph's checkpoint tables and applies
 LangGraph-managed checkpoint migrations.
 
-Run unit tests with:
+### Tests
+
+Two suites, run independently:
 
 ```bash
-uv run pytest
+# Unit - fast, no I/O, no external services
+uv run pytest -m unit
+
+# Integration - drives the FastAPI app (POST /support/requests) against a real
+# Postgres database with a deterministic, offline LLM
+docker compose -f docker-compose.integration.yml up -d
+uv run pytest -m integration
+docker compose -f docker-compose.integration.yml down
 ```
+
+`uv run pytest` runs both; the integration suite skips itself when its database
+(port 5433) is not reachable. `make test-unit` / `make test-integration` wrap the
+same commands. See `.agents/skills/testing/SKILL.md` for how to add tests to each
+suite.
 
 Run static type checker 
 
