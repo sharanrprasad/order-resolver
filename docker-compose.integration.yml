@@ -1,0 +1,26 @@
+# Throwaway Postgres used only by the integration test suite.
+#
+#   docker compose -f docker-compose.integration.yml up -d
+#   uv run pytest -m integration
+#   docker compose -f docker-compose.integration.yml down
+#
+# Runs on port 5433 so it never clashes with the dev database from
+# docker-compose.yml (5432). Data lives in tmpfs, so every `up` is a clean slate.
+name: order-resolver-integration
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: order_resolver_integration
+      POSTGRES_USER: order_resolver
+      POSTGRES_PASSWORD: order_resolver
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_resolver -d order_resolver_integration"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
